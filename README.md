@@ -25,13 +25,23 @@ The frontend is available at `http://localhost:5173`.
 
 ## Run the Backend
 
-```powershell
+```bash
 cd backend
-python -m venv .venv
-.[4mvenv\Scripts\Activate.ps1
+
+# Create virtual environment
+python3 -m venv .venv
+
+# Activate virtual environment
+# On macOS :
+source .venv/bin/activate
+# On Windows (PowerShell):
+# .\.venv\Scripts\Activate.ps1
+
+# Install dependencies
 pip install fastapi uvicorn python-multipart python-dotenv google-generativeai
+
+# Start server
 uvicorn main:app --reload
-```
 
 Create `backend/.env` with:
 
