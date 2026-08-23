@@ -6,6 +6,9 @@ import CropAdvisor from './components/CropAdvisor';
 import Marketplace from './components/Marketplace';
 import SpecialistCommunity from './components/SpecialistCommunity';
 import LoanSchemes from './components/LoanSchemes';
+import AuthModal from './components/AuthModal';
+import { useAuth } from './context/AuthContext';
+import './App.css';
 
 const modules = [
   { id: 'profile', icon: '🧑‍🌾', title: 'Farm Profile', copy: 'Keep farm details ready for better advice.', image: 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?q=80&w=900&auto=format&fit=crop', tone: 'leaf' },
@@ -18,22 +21,107 @@ const modules = [
 ];
 
 export default function App() {
+  const { user, logout } = useAuth();
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [activePage, setActivePage] = useState('home');
   const activeModule = modules.find((module) => module.id === activePage);
-  const pages = { profile: <FarmProfile />, radio: <VoiceRadio />, weather: <WeatherRisk />, crops: <CropAdvisor />, market: <Marketplace />, specialist: <SpecialistCommunity />, loans: <LoanSchemes /> };
+  const pages = {
+    profile: <FarmProfile />,
+    radio: <VoiceRadio />,
+    weather: <WeatherRisk />,
+    crops: <CropAdvisor />,
+    market: <Marketplace />,
+    specialist: <SpecialistCommunity />,
+    loans: <LoanSchemes />
+  };
 
-  return <div className="app-shell">
-    <header className="topbar">
-      <button className="brand" onClick={() => setActivePage('home')} aria-label="Go to FarmGuru dashboard"><span className="brand-mark">FG</span><span><strong>FarmGuru</strong><small>your field companion</small></span></button>
-      <div className="header-status"><span className="status-dot" /> Farm status: steady</div>
-      {activePage !== 'home' && <button className="back-button" onClick={() => setActivePage('home')}>← Dashboard</button>}
-    </header>
-    <main className="app-main">
-      {activePage === 'home' ? <div className="dashboard page-enter">
-        <section className="dashboard-hero"><div className="hero-copy"><p className="eyebrow">A smarter day in the field</p><h1>Good farming starts with a clear next step.</h1><p>Weather, crops, market decisions and expert help, all gathered around your farm.</p><button className="hero-action" onClick={() => setActivePage('radio')}>Ask Kisan Mitra <span>→</span></button></div><div className="hero-weather"><span className="weather-icon">☀️</span><p>Field outlook</p><strong>Clear &amp; calm</strong><small>Good day for field work</small></div></section>
-        <section className="quick-strip"><div><span>🌾</span><p><strong>5.5 acres</strong><small>Farm area</small></p></div><div><span>💧</span><p><strong>Water stable</strong><small>Irrigation check</small></p></div><div><span>📈</span><p><strong>85 / 100</strong><small>Farm readiness</small></p></div></section>
-        <section className="module-section"><div className="section-heading"><div><p className="eyebrow">Your workbench</p><h2>Choose what you want to do</h2></div><span>7 tools ready</span></div><div className="module-grid">{modules.map((module, index) => <button key={module.id} onClick={() => setActivePage(module.id)} className={`module-card ${module.tone}`} style={{ '--delay': `${index * 65}ms` }}><img src={module.image} alt="" /><span className="module-overlay" /><span className="module-icon">{module.icon}</span><span className="module-content"><strong>{module.title}</strong><small>{module.copy}</small></span><span className="module-arrow">↗</span></button>)}</div></section>
-      </div> : <div className="feature-stage page-enter"><div className="feature-intro"><p className="eyebrow">FarmGuru workspace</p><h1>{activeModule?.title}</h1><p>{activeModule?.copy}</p></div>{pages[activePage]}</div>}
-    </main>
-  </div>;
+  return (
+    <div className="app-shell">
+      <header className="topbar">
+        <button className="brand" onClick={() => setActivePage('home')} aria-label="Go to FarmGuru dashboard">
+          <span className="brand-mark">FG</span>
+          <span><strong>FarmGuru</strong><small>your field companion</small></span>
+        </button>
+        <div className="header-status">
+          <span className="status-dot" /> Farm status: steady
+          {user ? (
+            <div className="user-profile-menu" style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', marginLeft: '15px' }}>
+              <span className="user-name-tag">{user.full_name || user.email}</span>
+              <button className="btn-logout" onClick={logout}>Sign Out</button>
+            </div>
+          ) : (
+            <button className="btn-signin" onClick={() => setIsAuthOpen(true)}>Sign In</button>
+          )}
+        </div>
+        {activePage !== 'home' && (
+          <button className="back-button" onClick={() => setActivePage('home')}>← Dashboard</button>
+        )}
+      </header>
+      <main className="app-main">
+        {activePage === 'home' ? (
+          <div className="dashboard page-enter">
+            <section className="dashboard-hero">
+              <div className="hero-copy">
+                <p className="eyebrow">A smarter day in the field</p>
+                <h1>Good farming starts with a clear next step.</h1>
+                <p>Weather, crops, market decisions and expert help, all gathered around your farm.</p>
+                <button className="hero-action" onClick={() => setActivePage('radio')}>Ask Kisan Mitra <span>→</span></button>
+              </div>
+              <div className="hero-weather">
+                <span className="weather-icon">☀️</span>
+                <p>Field outlook</p>
+                <strong>Clear &amp; calm</strong>
+                <small>Good day for field work</small>
+              </div>
+            </section>
+
+            <section className="quick-strip">
+              <div><span>🌾</span><p><strong>5.5 acres</strong><small>Farm area</small></p></div>
+              <div><span>💧</span><p><strong>Water stable</strong><small>Irrigation check</small></p></div>
+              <div><span>📈</span><p><strong>85 / 100</strong><small>Farm readiness</small></p></div>
+            </section>
+
+            <section className="module-section">
+              <div className="section-heading">
+                <div>
+                  <p className="eyebrow">Your workbench</p>
+                  <h2>Choose what you want to do</h2>
+                </div>
+                <span>7 tools ready</span>
+              </div>
+              <div className="module-grid">
+                {modules.map((module, index) => (
+                  <button
+                    key={module.id}
+                    onClick={() => setActivePage(module.id)}
+                    className={`module-card ${module.tone}`}
+                    style={{ '--delay': `${index * 65}ms` }}
+                  >
+                    <img src={module.image} alt="" />
+                    <span className="module-overlay" />
+                    <span className="module-icon">{module.icon}</span>
+                    <span className="module-content">
+                      <strong>{module.title}</strong>
+                      <small>{module.copy}</small>
+                    </span>
+                    <span className="module-arrow">↗</span>
+                  </button>
+                ))}
+              </div>
+            </section>
+          </div>
+        ) : (
+          <div className="feature-stage page-enter">
+            <div className="feature-intro">
+              <p className="eyebrow">FarmGuru workspace</p>
+              <h1>{activeModule?.title}</h1>
+              <p>{activeModule?.copy}</p>
+            </div>
+            {pages[activePage]}
+          </div>
+        )}
+      </main>
+      <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
+    </div>
+  );
 }

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 
 export default function FarmProfile({ onSave }) {
   const [profile, setProfile] = useState({
-    name: 'Bhupendra Bista',
+    name: 'Ramesh Kumar',
     acreage: 5.5,
     soilType: 'Alluvial Loam',
     soilPh: 6.5,

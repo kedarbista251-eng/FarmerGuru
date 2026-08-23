@@ -1,1 +1,25 @@
+# Environment variables
 .env
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environment
+.venv/
+venv/
+ENV/
+env/
+
+# SQLite databases (keep local DBs in .gitignore if you don't want to commit them)
+*.db
+*.sqlite
+
+# IDE / editor files
+.idea/
+*.swp
+*~
+
+# OS files
+.DS_Store

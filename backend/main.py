@@ -7,8 +7,28 @@ import google.generativeai as genai
 
 load_dotenv()
 
-app = FastAPI(title="Farmer's Guide API")
+# Import database helpers and routers AFTER load_dotenv so env vars are set
+from backend.database import Base, engine
+from backend.routers.auth import router as auth_router
 
+
+# --- Lifespan: runs setup on startup, teardown on shutdown ---
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Create all tables (SQLite or PostgreSQL) when the server starts
+    try:
+        Base.metadata.create_all(bind=engine)
+        print("[OK] Database tables created / verified.")
+    except Exception as exc:
+        print(f"[WARN] Could not reach database on startup: {exc}")
+        print("   The server will still start; DB-dependent endpoints will fail until the DB is reachable.")
+    yield
+    # (Optional teardown code here)
+
+
+app = FastAPI(title="FarmGuru API", lifespan=lifespan)
+
+# --- CORS ---
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
