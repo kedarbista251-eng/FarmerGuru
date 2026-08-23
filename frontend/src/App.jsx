@@ -6,6 +6,8 @@ import CropAdvisor from './components/CropAdvisor';
 import Marketplace from './components/Marketplace';
 import SpecialistCommunity from './components/SpecialistCommunity';
 import LoanSchemes from './components/LoanSchemes';
+import AuthModal from './components/AuthModal';
+import { useAuth } from './context/AuthContext';
 import './App.css';
 
 const modules = [
@@ -19,16 +21,18 @@ const modules = [
 ];
 
 export default function App() {
+  const { user, logout } = useAuth();
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [activePage, setActivePage] = useState('home');
   const activeModule = modules.find((module) => module.id === activePage);
-  const pages = { 
-    profile: <FarmProfile />, 
-    radio: <VoiceRadio />, 
-    weather: <WeatherRisk />, 
-    crops: <CropAdvisor />, 
-    market: <Marketplace />, 
-    specialist: <SpecialistCommunity />, 
-    loans: <LoanSchemes /> 
+  const pages = {
+    profile: <FarmProfile />,
+    radio: <VoiceRadio />,
+    weather: <WeatherRisk />,
+    crops: <CropAdvisor />,
+    market: <Marketplace />,
+    specialist: <SpecialistCommunity />,
+    loans: <LoanSchemes />
   };
 
   return (
@@ -38,7 +42,17 @@ export default function App() {
           <span className="brand-mark">FG</span>
           <span><strong>FarmGuru</strong><small>your field companion</small></span>
         </button>
-        <div className="header-status"><span className="status-dot" /> Farm status: steady</div>
+        <div className="header-status">
+          <span className="status-dot" /> Farm status: steady
+          {user ? (
+            <div className="user-profile-menu" style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', marginLeft: '15px' }}>
+              <span className="user-name-tag">{user.full_name || user.email}</span>
+              <button className="btn-logout" onClick={logout}>Sign Out</button>
+            </div>
+          ) : (
+            <button className="btn-signin" onClick={() => setIsAuthOpen(true)}>Sign In</button>
+          )}
+        </div>
         {activePage !== 'home' && (
           <button className="back-button" onClick={() => setActivePage('home')}>← Dashboard</button>
         )}
@@ -77,10 +91,10 @@ export default function App() {
               </div>
               <div className="module-grid">
                 {modules.map((module, index) => (
-                  <button 
-                    key={module.id} 
-                    onClick={() => setActivePage(module.id)} 
-                    className={`module-card ${module.tone}`} 
+                  <button
+                    key={module.id}
+                    onClick={() => setActivePage(module.id)}
+                    className={`module-card ${module.tone}`}
                     style={{ '--delay': `${index * 65}ms` }}
                   >
                     <img src={module.image} alt="" />
@@ -107,6 +121,7 @@ export default function App() {
           </div>
         )}
       </main>
+      <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
     </div>
   );
 }

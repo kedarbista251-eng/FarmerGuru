@@ -1,15 +1,41 @@
+import sys
+import os
+from contextlib import asynccontextmanager
+
+# Ensure the project root is on the path so `from backend.xxx` imports work
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from fastapi import FastAPI, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import google.generativeai as genai
-import os
 import re
 from dotenv import load_dotenv
 
-# Load the secret key from your .env file
+# Load .env first so DATABASE_URL, SECRET_KEY, GEMINI_API_KEY are available
 load_dotenv()
 
-app = FastAPI(title="Farmer's Guide API")
+# Import database helpers and routers AFTER load_dotenv so env vars are set
+from backend.database import Base, engine
+from backend.routers.auth import router as auth_router
 
+
+# --- Lifespan: runs setup on startup, teardown on shutdown ---
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Create all tables (SQLite or PostgreSQL) when the server starts
+    try:
+        Base.metadata.create_all(bind=engine)
+        print("[OK] Database tables created / verified.")
+    except Exception as exc:
+        print(f"[WARN] Could not reach database on startup: {exc}")
+        print("   The server will still start; DB-dependent endpoints will fail until the DB is reachable.")
+    yield
+    # (Optional teardown code here)
+
+
+app = FastAPI(title="FarmGuru API", lifespan=lifespan)
+
+# --- CORS ---
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
@@ -18,15 +44,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Safely configure Gemini using the hidden variable
+# --- Include routers ---
+app.include_router(auth_router)
+
+# --- Gemini configuration ---
 api_key = os.getenv("GEMINI_API_KEY")
 if api_key:
     genai.configure(api_key=api_key)
 
-# 2. Configure Gemini (Replace with your actual API key)
-#genai.configure(api_key="YOUR_GEMINI_API_KEY")
 
-# 3. The Voice Assistant Endpoint
+# --- Voice Advisory endpoint ---
 @app.post("/api/voice-advisory")
 async def voice_advisory(
     user_query_text: str = Form(...),
@@ -57,7 +84,7 @@ async def voice_advisory(
     """
 
     try:
-        model = genai.GenerativeModel(os.getenv("GEMINI_MODEL", "gemini-3.6-flash"))
+        model = genai.GenerativeModel(os.getenv("GEMINI_MODEL", "gemini-1.5-flash"))
         response = model.generate_content(prompt)
     except Exception as error:
         error_text = str(error)
