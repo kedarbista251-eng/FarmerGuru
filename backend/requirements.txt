@@ -7,5 +7,5 @@ sqlalchemy
 psycopg2-binary
 passlib
 bcrypt
-python-jose
+PyJWT[crypto]
 email-validator
