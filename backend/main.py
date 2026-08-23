@@ -1,17 +1,10 @@
-import sys
 import os
-from contextlib import asynccontextmanager
-
-# Ensure the project root is on the path so `from backend.xxx` imports work
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
+import re
+from dotenv import load_dotenv
 from fastapi import FastAPI, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import google.generativeai as genai
-import re
-from dotenv import load_dotenv
 
-# Load .env first so DATABASE_URL, SECRET_KEY, GEMINI_API_KEY are available
 load_dotenv()
 
 # Import database helpers and routers AFTER load_dotenv so env vars are set
@@ -38,39 +31,45 @@ app = FastAPI(title="FarmGuru API", lifespan=lifespan)
 # --- CORS ---
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# --- Include routers ---
-app.include_router(auth_router)
 
-# --- Gemini configuration ---
-api_key = os.getenv("GEMINI_API_KEY")
-if api_key:
-    genai.configure(api_key=api_key)
+@app.get("/")
+def read_root():
+    """Health check endpoint."""
+    return {"status": "online", "message": "Kisan Mitra API is running."}
 
 
-# --- Voice Advisory endpoint ---
 @app.post("/api/voice-advisory")
-async def voice_advisory(
+def voice_advisory(
     user_query_text: str = Form(...),
-    preferred_language: str = Form("Hindi")
+    preferred_language: str = Form("Hindi"),
+    geminiAPIKey: str = Form(""),
 ):
     """
-    Accepts transcribed voice input and generates concise, audio-friendly advice.
+    Accepts user query and uses the form/cookie provided API key (or falls back to .env).
     """
     cleaned_query = user_query_text.strip()
     if not cleaned_query:
-        raise HTTPException(status_code=422, detail="Please provide a question for Kisan Mitra.")
+        raise HTTPException(
+            status_code=422, detail="Please provide a question for Kisan Mitra."
+        )
 
-    if not api_key:
+    # 1. Prioritize API key sent from the form/cookie, fallback to .env if empty
+    active_key = geminiAPIKey.strip() or os.getenv("GEMINI_API_KEY", "").strip()
+
+    if not active_key:
         raise HTTPException(
             status_code=503,
-            detail="Kisan Mitra is not configured. Add GEMINI_API_KEY to backend/.env and restart the API."
+            detail="Kisan Mitra is not configured. Please enter a valid Gemini API key.",
         )
+
+    # 2. Configure Gemini for this request
+    genai.configure(api_key=active_key)
 
     prompt = f"""
     You are 'Kisan Mitra', a friendly voice assistant for Indian farmers.
@@ -84,12 +83,36 @@ async def voice_advisory(
     """
 
     try:
-        model = genai.GenerativeModel(os.getenv("GEMINI_MODEL", "gemini-1.5-flash"))
+        model_name = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+        model = genai.GenerativeModel(model_name)
+
         response = model.generate_content(prompt)
+
+        if not getattr(response, "text", None) or not response.text.strip():
+            raise HTTPException(
+                status_code=502,
+                detail="Kisan Mitra received an empty or safety-blocked response from Gemini.",
+            )
+
+        return {
+            "status": "success",
+            "message": "Response generated successfully!",
+            "text_response": response.text,
+            "language": preferred_language,
+        }
+
     except Exception as error:
         error_text = str(error)
-        if "429" in error_text or "quota" in error_text.lower() or "resource exhausted" in error_text.lower():
-            retry_match = re.search(r"retry(?: in|_delay[^\d]*)(\d+)", error_text, re.IGNORECASE)
+        print(f"[Gemini API Error]: {error_text}")
+
+        if (
+            "429" in error_text
+            or "quota" in error_text.lower()
+            or "resource exhausted" in error_text.lower()
+        ):
+            retry_match = re.search(
+                r"retry(?: in|_delay[^\d]*)(\d+)", error_text, re.IGNORECASE
+            )
             retry_after = int(retry_match.group(1)) if retry_match else 60
             raise HTTPException(
                 status_code=429,
@@ -100,18 +123,14 @@ async def voice_advisory(
                 },
                 headers={"Retry-After": str(retry_after)},
             ) from error
+
         raise HTTPException(
             status_code=502,
-            detail="Kisan Mitra could not get a response from Gemini. Please try again shortly."
+            detail=f"Kisan Mitra could not get a response from Gemini. Error: {error_text}",
         ) from error
 
-    if not getattr(response, "text", "").strip():
-        raise HTTPException(
-            status_code=502,
-            detail="Kisan Mitra received an empty response from Gemini. Please try again."
-        )
 
-    return {
-        "text_response": response.text,
-        "language": preferred_language
-    }
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)

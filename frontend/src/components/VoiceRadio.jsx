@@ -1,10 +1,24 @@
 import React, { useState, useRef, useEffect } from 'react';
 
+// Helper utilities for managing simple client-side browser cookies
+const setCookie = (name, value, days = 30) => {
+  const expires = new Date(Date.now() + days * 864e5).toUTCString();
+  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/`;
+};
+
+const getCookie = (name) => {
+  return document.cookie.split('; ').reduce((r, v) => {
+    const parts = v.split('=');
+    return parts[0] === name ? decodeURIComponent(parts[1]) : r;
+  }, '');
+};
+
 export default function VoiceRadio() {
   const [messages, setMessages] = useState([
     { sender: 'ai', text: 'Namaste! I am Kisan Mitra. Ask me anything about local weather, mandi market prices, or crop selection.' }
   ]);
   const [input, setInput] = useState('');
+  const [apiKey, setApiKey] = useState('');
   const [language, setLanguage] = useState('Hindi');
   const [isListening, setIsListening] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -16,10 +30,27 @@ export default function VoiceRadio() {
   const requestInFlightRef = useRef(false);
   const cooldownTimerRef = useRef(null);
 
+  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+
   const languages = {
     English: { recognition: 'en-IN', speech: 'en-IN' },
     Hindi: { recognition: 'hi-IN', speech: 'hi-IN' },
     Nepali: { recognition: 'ne-NP', speech: 'ne-NP' }
+  };
+
+  // Load API Key from browser cookie on component mount
+  useEffect(() => {
+    const savedKey = getCookie('user_gemini_api_key');
+    if (savedKey) {
+      setApiKey(savedKey);
+    }
+  }, []);
+
+  // Save to cookie whenever the input text changes
+  const handleApiKeyChange = (e) => {
+    const newKey = e.target.value;
+    setApiKey(newKey);
+    setCookie('user_gemini_api_key', newKey);
   };
 
   // Auto-scroll to the latest message
@@ -69,12 +100,12 @@ export default function VoiceRadio() {
     recognition.onerror = (e) => {
       setIsListening(false);
       recognitionRef.current = null;
-      const messages = {
+      const errorMessages = {
         'not-allowed': 'Microphone permission was blocked. Allow microphone access in your browser address-bar settings and try again.',
         'audio-capture': 'No microphone was found. Connect a microphone and try again.',
         'no-speech': 'No speech was detected. Speak closer to the microphone and try again.'
       };
-      setMicrophoneError(messages[e.error] || `Microphone error: ${e.error}. Please try again.`);
+      setMicrophoneError(errorMessages[e.error] || `Microphone error: ${e.error}. Please try again.`);
     };
     recognition.onend = () => {
       setIsListening(false);
@@ -108,14 +139,18 @@ export default function VoiceRadio() {
     setIsLoading(true);
 
     try {
+      // Pull key from state or fallback directly to cookie
+      const activeApiKey = apiKey.trim() || getCookie('user_gemini_api_key');
+
       const formData = new FormData();
       formData.append('user_query_text', text);
       formData.append('preferred_language', selectedLanguage);
+      formData.append('geminiAPIKey', activeApiKey);
 
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'}/api/voice-advisory`,
-        { method: 'POST', body: formData }
-      );
+      const response = await fetch(`${API_BASE_URL}/api/voice-advisory`, {
+        method: 'POST',
+        body: formData,
+      });
 
       const result = await response.json().catch(() => ({}));
       if (!response.ok) {
@@ -153,9 +188,32 @@ export default function VoiceRadio() {
     <div className="max-w-2xl mx-auto bg-white rounded-3xl shadow-xl overflow-hidden border border-emerald-100 flex flex-col h-[80vh]">
       
       {/* Header */}
-      <div className="bg-emerald-900 text-white p-4 flex justify-between items-center">
+      <div className="bg-emerald-900 text-white p-4 flex justify-between items-center flex-wrap gap-2">
         <h2 className="font-bold flex items-center gap-2 text-sm md:text-base">📻 Kisan Voice & Text Chatbot</h2>
-        <div className="flex items-center gap-2">
+        
+        <div className="flex items-center gap-2 text-xs flex-wrap">
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-1">
+              <label htmlFor="geminiAPIKey" className="font-semibold">GEMINI KEY:</label>
+              <input
+                type="password"
+                id="geminiAPIKey"
+                value={apiKey}
+                onChange={handleApiKeyChange}
+                placeholder="Paste API Key"
+                className="bg-white text-gray-900 px-2 py-1 rounded text-xs focus:outline-none focus:ring-2 focus:ring-amber-300 w-36"
+              />
+            </div>
+            <a 
+              href="https://ai.google.dev/gemini-api/docs/api-key" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-[10px] text-amber-300 underline hover:text-amber-200"
+            >
+              Get Gemini Key
+            </a>
+          </div>
+
           <label htmlFor="assistant-language" className="sr-only">Assistant language</label>
           <select
             id="assistant-language"
