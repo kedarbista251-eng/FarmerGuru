@@ -2,10 +2,12 @@ fastapi
 uvicorn
 python-multipart
 python-dotenv
-google-generativeai
+google-genai
 sqlalchemy
 psycopg2-binary
 passlib
-bcrypt
+# passlib's bcrypt handler is not compatible with bcrypt 5.x.
+# Pin the backend to the supported 4.x release line for authentication.
+bcrypt>=4.0.1,<5.0.0
 PyJWT[crypto]
 email-validator

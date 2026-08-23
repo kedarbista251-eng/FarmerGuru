@@ -7,12 +7,12 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from fastapi import FastAPI, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-import google.generativeai as genai
+from google import genai
 import re
 from dotenv import load_dotenv
 
 # Load .env first so DATABASE_URL, SECRET_KEY, GEMINI_API_KEY are available
-load_dotenv()
+load_dotenv(override=True)
 
 # Import database helpers and routers AFTER load_dotenv so env vars are set
 from backend.database import Base, engine
@@ -49,8 +49,7 @@ app.include_router(auth_router)
 
 # --- Gemini configuration ---
 api_key = os.getenv("GEMINI_API_KEY")
-if api_key:
-    genai.configure(api_key=api_key)
+gemini_client = genai.Client(api_key=api_key) if api_key else None
 
 
 # --- Voice Advisory endpoint ---
@@ -84,8 +83,10 @@ async def voice_advisory(
     """
 
     try:
-        model = genai.GenerativeModel(os.getenv("GEMINI_MODEL", "gemini-1.5-flash"))
-        response = model.generate_content(prompt)
+        response = gemini_client.models.generate_content(
+            model=os.getenv("GEMINI_MODEL", "gemini-3.6-flash"),
+            contents=prompt,
+        )
     except Exception as error:
         error_text = str(error)
         if "429" in error_text or "quota" in error_text.lower() or "resource exhausted" in error_text.lower():
