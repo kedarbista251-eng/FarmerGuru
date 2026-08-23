@@ -56,3 +56,28 @@ npm run preview  # Preview the production build
 ## Security
 
 Keep `backend/.env` private. Do not commit API keys or other credentials.
+
+## Deploy the Backend to Render
+
+The repository includes a `render.yaml` Blueprint for the FastAPI backend. It
+uses `backend/requirements.txt`; Python projects do not need a `package.json`.
+
+1. Push this repository to GitHub. Confirm that `backend/.env` is not pushed.
+2. In Render, select **New** > **Blueprint**, connect the GitHub repository,
+   and apply the detected `render.yaml`.
+3. Open the created `farmguru-api` service. In **Environment**, enter a real
+   `GEMINI_API_KEY`. Render generates `JWT_SECRET` automatically.
+4. Create a Render PostgreSQL database (New > PostgreSQL). Copy its **Internal
+   Database URL** into the API service's `DATABASE_URL` environment variable.
+5. Deploy. Render should report the health check at `/health` as successful.
+   The API URL is displayed on the service page, for example
+   `https://farmguru-api.onrender.com`.
+6. Deploy the frontend, then set the API service's `FRONTEND_URL` to the exact
+   public frontend URL (no trailing slash) and redeploy it.
+7. In the frontend deployment environment, set
+   `VITE_API_URL=https://farmguru-api.onrender.com`, then rebuild/redeploy the
+   frontend. This is required because Vite embeds environment values at build
+   time.
+
+After deployment, open `https://your-api.onrender.com/health`; it should return
+`{"status":"ok"}`. FastAPI documentation is available at `/docs`.

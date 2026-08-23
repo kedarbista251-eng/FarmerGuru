@@ -35,10 +35,18 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="FarmGuru API", lifespan=lifespan)
 
+# In production set FRONTEND_URL to the URL of the deployed frontend. Multiple
+# origins can be supplied as a comma-separated list.
+frontend_origins = os.getenv("FRONTEND_URL", "").split(",")
+allowed_origins = [
+    origin.strip().rstrip("/") for origin in frontend_origins if origin.strip()
+]
+allowed_origins.extend(["http://localhost:5173", "http://127.0.0.1:5173"])
+
 # --- CORS ---
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -46,6 +54,12 @@ app.add_middleware(
 
 # --- Include routers ---
 app.include_router(auth_router)
+
+
+@app.get("/health", tags=["Health"])
+async def health_check():
+    """Lightweight endpoint used by Render to confirm the service is running."""
+    return {"status": "ok"}
 
 # --- Gemini configuration ---
 api_key = os.getenv("GEMINI_API_KEY")
