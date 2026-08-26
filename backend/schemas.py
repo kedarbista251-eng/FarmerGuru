@@ -23,3 +23,22 @@ class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserResponse
+
+class FarmProfileUpdate(BaseModel):
+    name: Optional[str] = None
+    profile_pic: Optional[str] = None
+    acreage: Optional[float] = None
+    soil_type: Optional[str] = None
+    soil_ph: Optional[float] = None
+    irrigation: Optional[str] = None
+    district: Optional[str] = None
+    active_crop: Optional[str] = None
+    sowing_date: Optional[str] = None
+    expected_harvest: Optional[str] = None
+
+class FarmProfileResponse(FarmProfileUpdate):
+    id: int
+    user_id: int
+
+    model_config = ConfigDict(from_attributes=True)
+

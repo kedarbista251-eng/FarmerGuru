@@ -17,7 +17,7 @@ load_dotenv(override=True)
 # Import database helpers and routers AFTER load_dotenv so env vars are set
 from backend.database import Base, engine
 from backend.routers.auth import router as auth_router
-
+from backend.routers.profile import router as profile_router
 
 # --- Lifespan: runs setup on startup, teardown on shutdown ---
 @asynccontextmanager
@@ -54,6 +54,7 @@ app.add_middleware(
 
 # --- Include routers ---
 app.include_router(auth_router)
+app.include_router(profile_router)
 
 
 @app.get("/health", tags=["Health"])
