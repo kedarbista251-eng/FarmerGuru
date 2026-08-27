@@ -80,8 +80,12 @@ uses `backend/requirements.txt`; Python projects do not need a `package.json`.
    and apply the detected `render.yaml`.
 3. Open the created `farmguru-api` service. In **Environment**, enter a real
    `GEMINI_API_KEY`. Render generates `JWT_SECRET` automatically.
-4. Create a Render PostgreSQL database (New > PostgreSQL). Copy its **Internal
-   Database URL** into the API service's `DATABASE_URL` environment variable.
+4. For Supabase, open **Connect > Session pooler** and copy the full
+   PostgreSQL connection string into the API service's `DATABASE_URL` variable.
+   Use the pooler hostname and port shown by Supabase, not the direct
+   `db.<project>.supabase.co:5432` hostname, because Render instances may not
+   have an IPv6 route to that direct endpoint. Keep the password URL-encoded.
+   For a Render PostgreSQL database, use its **Internal Database URL** instead.
 5. Deploy. Render should report the health check at `/health` as successful.
    The API URL is displayed on the service page, for example
    `https://farmguru-api.onrender.com`.
