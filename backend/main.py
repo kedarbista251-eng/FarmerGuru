@@ -7,6 +7,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from fastapi import FastAPI, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 from google import genai
 import re
 from dotenv import load_dotenv
@@ -70,8 +71,13 @@ app.include_router(voice_router)
 
 @app.get("/health", tags=["Health"])
 async def health_check():
-    """Lightweight endpoint used by Render to confirm the service is running."""
-    return {"status": "ok"}
+    """Verify both the API process and its configured database are available."""
+    try:
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="Database is unavailable") from exc
+    return {"status": "ok", "database": "ok"}
 
 # --- Gemini configuration ---
 api_key = os.getenv("GEMINI_API_KEY")

@@ -97,4 +97,6 @@ uses `backend/requirements.txt`; Python projects do not need a `package.json`.
    time.
 
 After deployment, open `https://your-api.onrender.com/health`; it should return
-`{"status":"ok"}`. FastAPI documentation is available at `/docs`.
+`{"status":"ok","database":"ok"}`. A `503 Database is unavailable` response
+means the Render `DATABASE_URL` still needs to be corrected. FastAPI
+documentation is available at `/docs`.
