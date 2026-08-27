@@ -1,21 +1,60 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 const DEFAULT_PROFILE = {
-  name: 'Purushottam Gupta',
+  name: '',
   profilePic: null,
-  acreage: 5.5,
-  soilType: 'Alluvial Loam',
-  soilPh: 6.5,
-  irrigation: 'Borewell & Canal',
-  district: 'Rourkela, Odisha',
-  activeCrop: 'Millets (Ragi)',
-  sowingDate: '2026-06-15',
-  expectedHarvest: '2026-10-10'
+  acreage: 0,
+  soilType: '',
+  soilPh: null,
+  irrigation: '',
+  district: '',
+  activeCrop: '',
+  sowingDate: '',
+  expectedHarvest: ''
 };
 
-export default function FarmProfile({ onSave }) {
-  const { token } = useAuth();
-  const [profile, setProfile] = useState(DEFAULT_PROFILE);
+const fromApiProfile = (data) => ({
+  name: data.name || '',
+  profilePic: data.profile_pic || null,
+  acreage: data.acreage ?? 0,
+  soilType: data.soil_type || '',
+  soilPh: data.soil_ph,
+  irrigation: data.irrigation || '',
+  district: data.district || '',
+  activeCrop: data.active_crop || '',
+  sowingDate: data.sowing_date || '',
+  expectedHarvest: data.expected_harvest || ''
+});
+
+const toApiProfile = (profile) => ({
+  name: profile.name,
+  profile_pic: profile.profilePic,
+  acreage: profile.acreage,
+  soil_type: profile.soilType,
+  soil_ph: profile.soilPh,
+  irrigation: profile.irrigation,
+  district: profile.district,
+  active_crop: profile.activeCrop,
+  sowing_date: profile.sowingDate,
+  expected_harvest: profile.expectedHarvest
+});
+
+export default function FarmProfile({ onSave, isModal = false, onClose }) {
+  const { user, token } = useAuth();
+  const [profile, setProfile] = useState({
+    ...DEFAULT_PROFILE,
+    name: user?.full_name || user?.email || DEFAULT_PROFILE.name
+  });
+
+  // Make sure it updates if user object loads after component mounts
+  useEffect(() => {
+    if (user) {
+      setProfile(prev => ({
+        ...prev,
+        name: prev.name === DEFAULT_PROFILE.name ? (user.full_name || user.email) : prev.name
+      }));
+    }
+  }, [user]);
 
   const [saved, setSaved] = useState(false);
   const [locationSearch, setLocationSearch] = useState('');
@@ -28,10 +67,13 @@ export default function FarmProfile({ onSave }) {
       fetch(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'}/api/profile`, {
         headers: { Authorization: `Bearer ${token}` }
       })
-        .then(res => res.json())
+        .then(async res => {
+          if (!res.ok) throw new Error(`Profile request failed (${res.status})`);
+          return res.json();
+        })
         .then(data => {
           if (data && data.id) {
-            setProfile(prev => ({ ...prev, ...data }));
+            setProfile(prev => ({ ...prev, ...fromApiProfile(data) }));
           }
         })
         .catch(err => console.warn('Failed to fetch profile:', err));
@@ -126,34 +168,44 @@ export default function FarmProfile({ onSave }) {
     e.preventDefault();
     if (token) {
       try {
-        await fetch(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'}/api/profile`, {
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'}/api/profile`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`
           },
-          body: JSON.stringify(profile)
+          body: JSON.stringify(toApiProfile(profile))
         });
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({}));
+          throw new Error(error.detail || 'Could not save farm profile');
+        }
       } catch (err) {
         console.error("Failed to save profile", err);
+        alert('Your farm profile could not be saved. Please try again.');
+        return;
       }
     }
     setSaved(true);
     if (onSave) onSave(profile);
-    setTimeout(() => setSaved(false), 3000);
+    setTimeout(() => {
+      setSaved(false);
+      if (onClose) onClose();
+    }, 1500);
   };
 
   return (
     <div style={{
       maxWidth: '850px',
-      margin: '0 auto',
+      margin: isModal ? '0' : '0 auto',
       backgroundColor: '#ffffff',
-      borderRadius: '16px',
-      boxShadow: '0 20px 40px rgba(0,0,0,0.08)',
+      borderRadius: isModal ? '0' : '16px',
+      boxShadow: isModal ? 'none' : '0 20px 40px rgba(0,0,0,0.08)',
       overflow: 'hidden',
-      border: '1px solid #d1fae5',
+      border: isModal ? 'none' : '1px solid #d1fae5',
       display: 'flex',
-      flexDirection: 'column'
+      flexDirection: 'column',
+      position: 'relative'
     }}>
       {/* Top Banner */}
       <div style={{

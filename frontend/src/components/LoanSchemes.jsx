@@ -115,6 +115,10 @@ const REGIONAL_NEWS_STREAM = [
 ];
 
 export default function LoanSchemes() {
+  const [schemes, setSchemes] = useState(REAL_GOVT_SCHEMES);
+  const [loans, setLoans] = useState(AUTHENTIC_BANK_LOANS);
+  const [branches, setBranches] = useState(LOCAL_BRANCH_DIRECTORY);
+  const [news, setNews] = useState([...NATIONAL_NEWS_STREAM, ...REGIONAL_NEWS_STREAM]);
   const [activeTab, setActiveTab] = useState('schemes');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [userLocation, setUserLocation] = useState('Rourkela, Odisha');
@@ -125,6 +129,13 @@ export default function LoanSchemes() {
   const [isPromptRepayment, setIsPromptRepayment] = useState(true);
 
   useEffect(() => {
+    const api = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+    Promise.all([fetch(`${api}/api/schemes/govt`), fetch(`${api}/api/schemes/loans`), fetch(`${api}/api/schemes/branches`), fetch(`${api}/api/schemes/news`)]).then(async ([schemeResponse, loanResponse, branchResponse, newsResponse]) => {
+      if (schemeResponse.ok) setSchemes((await schemeResponse.json()).map(scheme => ({ ...scheme, applyUrl: scheme.apply_url })));
+      if (loanResponse.ok) setLoans((await loanResponse.json()).map(loan => ({ ...loan, loanName: loan.loan_name, baseRate: loan.base_rate, subventionRate: loan.subvention_rate, maxLimit: loan.max_limit, directLink: loan.direct_link, docs: JSON.parse(loan.docs || '[]') })));
+      if (branchResponse.ok) setBranches(await branchResponse.json());
+      if (newsResponse.ok) setNews(await newsResponse.json());
+    }).catch(() => {});
     try {
       const savedProfile = localStorage.getItem('kisan_farm_profile');
       if (savedProfile) {
@@ -143,8 +154,8 @@ export default function LoanSchemes() {
   const annualSavings = annualInterestWithoutSubvention - annualInterestWithSubvention;
 
   const filteredSchemes = selectedCategory === 'All' 
-    ? REAL_GOVT_SCHEMES 
-    : REAL_GOVT_SCHEMES.filter(s => s.category.toLowerCase().includes(selectedCategory.toLowerCase()));
+    ? schemes 
+    : schemes.filter(s => s.category.toLowerCase().includes(selectedCategory.toLowerCase()));
 
   return (
     <div style={{
@@ -427,7 +438,7 @@ export default function LoanSchemes() {
             </span>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '18px' }}>
-              {AUTHENTIC_BANK_LOANS.map(l => (
+              {loans.map(l => (
                 <div key={l.id} style={{
                   padding: '22px 24px',
                   borderRadius: '16px',
@@ -550,7 +561,7 @@ export default function LoanSchemes() {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
-              {LOCAL_BRANCH_DIRECTORY.map((b, idx) => (
+              {branches.map((b, idx) => (
                 <div key={idx} style={{
                   padding: '18px 22px',
                   borderRadius: '14px',
@@ -607,7 +618,7 @@ export default function LoanSchemes() {
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '14px' }}>
-                {NATIONAL_NEWS_STREAM.map(n => (
+                {news.filter(n => n.type !== 'regional').map(n => (
                   <div key={n.id} style={{
                     padding: '18px 20px',
                     borderRadius: '14px',
@@ -654,7 +665,7 @@ export default function LoanSchemes() {
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '14px' }}>
-                {REGIONAL_NEWS_STREAM.map(n => (
+                {news.filter(n => n.type === 'regional').map(n => (
                   <div key={n.id} style={{
                     padding: '18px 20px',
                     borderRadius: '14px',

@@ -33,6 +33,19 @@ python -m pip install -r requirements.txt
 python -m uvicorn main:app --reload
 ```
 
+The API creates all required tables on startup. To load the bundled crop,
+scheme, marketplace, community, and advisory data, run this once from the
+repository root:
+
+```powershell
+python -m backend.seed
+```
+
+Local development uses `backend/farmguru.db`. For PostgreSQL, set
+`DATABASE_URL` in `backend/.env` before starting the API or running the seed
+command. Password reset OTPs are logged locally; configure `TWILIO_ACCOUNT_SID`,
+`TWILIO_AUTH_TOKEN`, and `TWILIO_PHONE_NUMBER` in production to send real SMS.
+
 Create `backend/.env` with:
 
 ```env

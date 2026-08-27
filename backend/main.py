@@ -15,9 +15,14 @@ from dotenv import load_dotenv
 load_dotenv(override=True)
 
 # Import database helpers and routers AFTER load_dotenv so env vars are set
-from backend.database import Base, engine
+from backend.database import Base, engine, ensure_schema
 from backend.routers.auth import router as auth_router
 from backend.routers.profile import router as profile_router
+from backend.routers.community import router as community_router
+from backend.routers.marketplace import router as marketplace_router
+from backend.routers.advisory import router as advisory_router
+from backend.routers.schemes import router as schemes_router
+from backend.routers.voice import router as voice_router
 
 # --- Lifespan: runs setup on startup, teardown on shutdown ---
 @asynccontextmanager
@@ -25,6 +30,7 @@ async def lifespan(app: FastAPI):
     # Create all tables (SQLite or PostgreSQL) when the server starts
     try:
         Base.metadata.create_all(bind=engine)
+        ensure_schema()
         print("[OK] Database tables created / verified.")
     except Exception as exc:
         print(f"[WARN] Could not reach database on startup: {exc}")
@@ -55,6 +61,11 @@ app.add_middleware(
 # --- Include routers ---
 app.include_router(auth_router)
 app.include_router(profile_router)
+app.include_router(community_router)
+app.include_router(marketplace_router)
+app.include_router(advisory_router)
+app.include_router(schemes_router)
+app.include_router(voice_router)
 
 
 @app.get("/health", tags=["Health"])

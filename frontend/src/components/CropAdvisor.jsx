@@ -95,6 +95,7 @@ const WATER_SOURCES = [
 ];
 
 export default function CropAdvisor() {
+  const [cropDatabase, setCropDatabase] = useState(CROP_DATABASE);
   const [loading, setLoading] = useState(true);
   const [selectedCropId, setSelectedCropId] = useState('ragi');
   const [farmAcres, setFarmAcres] = useState(2);
@@ -107,6 +108,9 @@ export default function CropAdvisor() {
   const [soilNitrogen, setSoilNitrogen] = useState('Med');
 
   useEffect(() => {
+    fetch(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'}/api/advisory/crops`).then(response => response.ok ? response.json() : []).then(rows => {
+      if (rows.length) setCropDatabase(rows.map(crop => ({ ...crop, suitableMonths: JSON.parse(crop.suitable_months || '[]'), idealPh: { min: crop.ideal_ph_min, max: crop.ideal_ph_max }, npkReq: JSON.parse(crop.npk_req || '{}'), estCostPerAcre: crop.est_cost_per_acre, estYieldQuintal: crop.est_yield_quintal, marketPricePerQuintal: crop.market_price_per_quintal, companionCrop: crop.companion_crop, monthlyPrices: JSON.parse(crop.monthly_prices || '[]'), productivitySteps: JSON.parse(crop.productivity_steps || '[]') })));
+    }).catch(() => {});
     const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
     const now = new Date();
     setCurrentMonth(monthNames[now.getMonth()]);
@@ -134,7 +138,7 @@ export default function CropAdvisor() {
     fetchLiveTelemetry();
   }, []);
 
-  const activeCrop = CROP_DATABASE.find(c => c.id === selectedCropId) || CROP_DATABASE[0];
+  const activeCrop = cropDatabase.find(c => c.id === selectedCropId) || cropDatabase[0];
   const waterSourceObj = WATER_SOURCES.find(w => w.id === selectedWaterSource);
 
   const waterCostTotal = waterSourceObj.costMultiplier * farmAcres;
@@ -330,7 +334,7 @@ export default function CropAdvisor() {
             gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
             gap: '12px'
           }}>
-            {CROP_DATABASE.map(c => (
+            {cropDatabase.map(c => (
               <button
                 key={c.id}
                 onClick={() => setSelectedCropId(c.id)}

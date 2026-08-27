@@ -7,6 +7,8 @@ import Marketplace from './components/Marketplace';
 import SpecialistCommunity from './components/SpecialistCommunity';
 import LoanSchemes from './components/LoanSchemes';
 import AuthModal from './components/AuthModal';
+import OnboardingWizard from './components/OnboardingWizard';
+import AccountMenu from './components/AccountMenu';
 import { useAuth } from './context/AuthContext';
 import './App.css';
 
@@ -56,8 +58,10 @@ const modules = [
 ];
 
 export default function App() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showAccount, setShowAccount] = useState(false);
   const [activePage, setActivePage] = useState('home');
   const [tipIndex, setTipIndex] = useState(0);
   const [fade, setFade] = useState(true);
@@ -75,6 +79,14 @@ export default function App() {
 
     return () => clearInterval(interval);
   }, []);
+
+  const handleNavigation = (moduleId) => {
+    if (!user && moduleId !== 'home') {
+      setIsAuthOpen(true);
+      return;
+    }
+    setActivePage(moduleId);
+  };
 
   // Fetch Real Live Weather to Set Background Wallpaper Dynamically
   useEffect(() => {
@@ -131,8 +143,9 @@ export default function App() {
               <span className="status-text">Farm status: steady</span>
               {user ? (
                 <div className="user-profile-menu" style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', marginLeft: '15px' }}>
-                  <span className="user-name-tag" style={{ color: '#d1fae5', fontSize: '12px' }}>{user.full_name || user.email}</span>
-                  <button className="btn-logout" onClick={logout} style={{ background: 'transparent', border: '1px solid #d1fae5', color: '#d1fae5', padding: '4px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}>Sign Out</button>
+                  <button onClick={() => setShowAccount(true)} aria-label="Open account settings" title="Account settings" style={{ width: 38, height: 38, borderRadius: '50%', border: '2px solid #a7f3d0', background: '#047857', color: '#fff', fontWeight: 800, cursor: 'pointer' }}>
+                    {(user.full_name || user.email || 'F').charAt(0).toUpperCase()}
+                  </button>
                 </div>
               ) : (
                 <button className="btn-signin" onClick={() => setIsAuthOpen(true)} style={{ marginLeft: '15px', background: '#fbbf24', color: '#064e3b', border: 'none', padding: '6px 12px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '11px' }}>Sign In</button>
@@ -184,7 +197,7 @@ export default function App() {
                   </p>
                 </div>
 
-                <button className="hero-action" onClick={() => setActivePage('radio')}>
+                <button className="hero-action" onClick={() => handleNavigation('radio')}>
                   Ask Kisan Mitra <span>→</span>
                 </button>
               </div>
@@ -225,7 +238,7 @@ export default function App() {
                 {modules.map((module, index) => (
                   <button 
                     key={module.id} 
-                    onClick={() => setActivePage(module.id)} 
+                    onClick={() => handleNavigation(module.id)} 
                     className={`module-card ${module.tone}`} 
                     style={{ '--delay': `${index * 65}ms` }}
                   >
@@ -253,7 +266,21 @@ export default function App() {
           </div>
         )}
       </main>
-      <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
+      
+      <AuthModal 
+        isOpen={isAuthOpen} 
+        onClose={() => setIsAuthOpen(false)} 
+        onRegisterSuccess={() => setShowOnboarding(true)} 
+      />
+
+      {showOnboarding && (
+        <div className="modal-overlay" style={{ backdropFilter: 'blur(10px)', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <OnboardingWizard onClose={() => setShowOnboarding(false)} />
+        </div>
+      )}
+
+      {showAccount && <AccountMenu onClose={() => setShowAccount(false)} onSignedOut={() => setActivePage('home')} />}
+
     </div>
   );
 }

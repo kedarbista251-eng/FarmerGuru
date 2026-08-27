@@ -16,6 +16,7 @@ const LOCAL_KNOWLEDGE_BASE = [
 ];
 
 export default function VoiceRadio() {
+  const [suggestedPrompts, setSuggestedPrompts] = useState(SUGGESTED_PROMPTS);
   const [messages, setMessages] = useState([
     { sender: 'ai', text: 'Namaste! I am Kisan Mitra, your personal farm advisor. Ask me anything about local weather, mandi market prices, or crop care.' }
   ]);
@@ -32,6 +33,13 @@ export default function VoiceRadio() {
   const endRef = useRef(null);
   const requestInFlightRef = useRef(false);
   const cooldownTimerRef = useRef(null);
+
+  useEffect(() => {
+    const api = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+    fetch(`${api}/api/voice/prompts`).then(response => response.ok ? response.json() : []).then(rows => {
+      if (rows.length) setSuggestedPrompts(rows.map(prompt => prompt.text));
+    }).catch(() => {});
+  }, []);
 
   const languages = {
     English: { recognition: 'en-IN', speech: 'en-IN', label: 'English' },
@@ -407,7 +415,7 @@ export default function VoiceRadio() {
         <span style={{ fontSize: '11px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', flexShrink: 0 }}>
           Suggestions:
         </span>
-        {SUGGESTED_PROMPTS.map((prompt, idx) => (
+        {suggestedPrompts.map((prompt, idx) => (
           <button
             key={idx}
             onClick={() => processQuery(prompt)}

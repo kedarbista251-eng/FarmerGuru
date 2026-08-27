@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 
 const INITIAL_CLANS = [
   { id: 'agronomy', name: 'Agronomy Specialists', icon: '🔬', members: 12, topic: 'Crop Health & Soil', tag: 'Crop Health', joined: false },
@@ -46,8 +47,10 @@ const INITIAL_POSTS = [
 ];
 
 export default function SpecialistCommunity() {
+  const { user } = useAuth();
   const [clans, setClans] = useState(INITIAL_CLANS);
   const [posts, setPosts] = useState(INITIAL_POSTS);
+  const [tickerAlerts, setTickerAlerts] = useState(TICKER_ALERTS);
   const [newQ, setNewQ] = useState('');
   const [selectedExpert, setSelectedExpert] = useState('agronomy');
   const [activeFilter, setActiveFilter] = useState('All');
@@ -56,6 +59,15 @@ export default function SpecialistCommunity() {
   const [replyInputs, setReplyInputs] = useState({});
   const [openReplyBox, setOpenReplyBox] = useState({});
   const [currentlySpeakingId, setCurrentlySpeakingId] = useState(null);
+
+  useEffect(() => {
+    const api = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+    Promise.all([fetch(`${api}/api/community/clans`), fetch(`${api}/api/community/alerts`), fetch(`${api}/api/community/posts`)]).then(async ([clanResponse, alertResponse, postResponse]) => {
+      if (clanResponse.ok) setClans(await clanResponse.json());
+      if (alertResponse.ok) setTickerAlerts((await alertResponse.json()).map(alert => alert.text));
+      if (postResponse.ok) setPosts((await postResponse.json()).map(post => ({ ...post, author: post.author_name, role: post.author_role, badgeColor: post.badge_color, clanId: post.clan_id, replies: post.replies.map(reply => ({ ...reply, author: reply.author_name })) })));
+    }).catch(() => {});
+  }, []);
 
   const toggleClanJoin = (clanId) => {
     setClans(prev => prev.map(c => {
@@ -87,7 +99,7 @@ export default function SpecialistCommunity() {
 
     const newEntry = {
       id: Date.now(),
-      author: 'Purushottam Gupta',
+      author: user?.full_name || user?.email || 'Registered Farmer',
       role: 'Registered Farmer',
       badgeColor: '#0284c7',
       q: newQ.trim(),
@@ -123,7 +135,7 @@ export default function SpecialistCommunity() {
       if (p.id === postId) {
         return {
           ...p,
-          replies: [...p.replies, { id: Date.now(), author: 'Purushottam Gupta', text: text.trim(), time: 'Just now' }]
+          replies: [...p.replies, { id: Date.now(), author: user?.full_name || user?.email || 'Registered Farmer', text: text.trim(), time: 'Just now' }]
         };
       }
       return p;
@@ -214,7 +226,7 @@ export default function SpecialistCommunity() {
           fontWeight: '700',
           color: '#78350f'
         }}>
-          {TICKER_ALERTS.join('   •••   ')}
+          {tickerAlerts.join('   •••   ')}
         </div>
         <style>{`
           @keyframes marquee {

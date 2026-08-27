@@ -20,14 +20,14 @@ export function AuthProvider({ children }) {
     setLoading(false);
   }, []);
 
-  const login = async (email, password) => {
+  const login = async (identifier, password) => {
     const apiUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
     const response = await fetch(`${apiUrl}/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ identifier, password }),
     });
 
     const data = await response.json();
@@ -41,14 +41,14 @@ export function AuthProvider({ children }) {
     return data.user;
   };
 
-  const register = async (email, password, fullName, role) => {
+  const register = async (email, phone, password, fullName, role) => {
     const apiUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
     const response = await fetch(`${apiUrl}/auth/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ email, password, full_name: fullName, role }),
+      body: JSON.stringify({ email, phone, password, full_name: fullName, role }),
     });
 
     const data = await response.json();
@@ -62,6 +62,20 @@ export function AuthProvider({ children }) {
     return data.user;
   };
 
+  const updateAccount = async (account) => {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+    const response = await fetch(`${apiUrl}/auth/account`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+      body: JSON.stringify(account),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || 'Could not update account');
+    localStorage.setItem('user', JSON.stringify(data));
+    setUser(data);
+    return data;
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -69,7 +83,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, updateAccount, logout }}>
       {children}
     </AuthContext.Provider>
   );

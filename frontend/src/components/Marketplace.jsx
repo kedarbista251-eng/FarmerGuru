@@ -33,6 +33,9 @@ const USER_PRODUCE_LOTS = [
 
 export default function Marketplace() {
   const [activeTab, setActiveTab] = useState('manure');
+  const [mandiRates, setMandiRates] = useState(MANDI_RATES);
+  const [agriInputs, setAgriInputs] = useState(AGRI_INPUTS);
+  const [produceLots, setProduceLots] = useState(USER_PRODUCE_LOTS);
   const [selectedCropAlert, setSelectedCropAlert] = useState('Paddy');
   const [userLocation, setUserLocation] = useState('Rourkela, Odisha');
 
@@ -41,6 +44,15 @@ export default function Marketplace() {
   const [vehicleType, setVehicleType] = useState('auto'); // auto, mini, truck
 
   useEffect(() => {
+    const api = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+    Promise.all([fetch(`${api}/api/marketplace/rates`), fetch(`${api}/api/marketplace/inputs`), fetch(`${api}/api/marketplace/lots`)]).then(async ([rates, inputs, lots]) => {
+      if (rates.ok) setMandiRates((await rates.json()).map(rate => ({ ...rate, min: rate.min_price, max: rate.max_price, modal: rate.modal_price })));
+      if (inputs.ok) {
+        const rows = await inputs.json();
+        setAgriInputs(rows.reduce((groups, item) => ({ ...groups, [item.category]: [...(groups[item.category] || []), item] }), { manure: [], seeds: [], equipment: [] }));
+      }
+      if (lots.ok) setProduceLots(await lots.json());
+    }).catch(() => {});
     try {
       const savedProfile = localStorage.getItem('kisan_farm_profile');
       if (savedProfile) {
@@ -207,7 +219,7 @@ export default function Marketplace() {
             gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
             gap: '12px'
           }}>
-            {MANDI_RATES.map((m, idx) => (
+            {mandiRates.map((m, idx) => (
               <div key={idx} style={{
                 padding: '12px',
                 backgroundColor: '#f8fafc',
@@ -282,7 +294,7 @@ export default function Marketplace() {
             gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
             gap: '16px'
           }}>
-            {AGRI_INPUTS[activeTab].map(item => (
+            {agriInputs[activeTab].map(item => (
               <div key={item.id} style={{
                 padding: '18px',
                 borderRadius: '14px',
@@ -367,7 +379,7 @@ export default function Marketplace() {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
-              {USER_PRODUCE_LOTS.map(lot => (
+              {produceLots.map(lot => (
                 <div key={lot.id} style={{
                   padding: '18px',
                   borderRadius: '14px',
